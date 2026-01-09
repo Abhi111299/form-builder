@@ -1,0 +1,192 @@
+  generator client {
+    provider = "prisma-client-js"
+  }
+
+  datasource db {
+    provider = "postgresql"
+  }
+
+
+model Form {
+  id          BigInt       @id @default(autoincrement())
+  adminId     String       // external user ID
+  tenantId    String?
+  title       String
+  description String?
+  status      String       @default("active")
+  startDate   DateTime?    @db.Date
+  endDate     DateTime?    @db.Date
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  sections    FormSection[]
+  questions   FormQuestion[]
+  submissions FormSubmission[]
+
+  @@map("forms")
+}
+
+model FormSection {
+  id          BigInt       @id @default(autoincrement())
+  formId      BigInt
+  title       String?
+  description String?
+  orderNo     Int?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  form      Form       @relation(fields: [formId], references: [id])
+  questions FormQuestion[]
+  @@map("form_sections")
+}
+
+model FormQuestion {
+  id          BigInt       @id @default(autoincrement())
+  formId      BigInt
+  sectionId   BigInt
+  questionText String
+  sequence    BigInt
+  type        String
+  required    Boolean      @default(false)
+  orderNo     Int?
+  settings    Json?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt 
+
+  form      Form       @relation(fields: [formId], references: [id])
+  section   FormSection @relation(fields: [sectionId], references: [id])
+  options   QuestionOption[]
+  images    QuestionImage[]
+  childConditions  QuestionCondition[] @relation("childQuestion")
+  parentConditions QuestionCondition[] @relation("parentQuestion")
+  answers   FormAnswer[]
+  gridAnswers GridAnswer[]
+  rows      QuestionRow[]
+  
+  @@unique([formId, sectionId, sequence])
+  @@map("form_questions")
+}
+
+model QuestionOption {
+  id          BigInt       @id @default(autoincrement())
+  questionId  BigInt
+  optionLabel String
+  optionValue String?
+  orderNo     Int?
+  createdAt   DateTime     @default(now())
+
+  question         FormQuestion       @relation(fields: [questionId], references: [id])
+  dependentConditions QuestionCondition[] @relation("dependsOnOption")
+  answerOptionValues  AnswerOptionValue[]
+  gridAnswers         GridAnswer[]
+  answers             FormAnswer[]      @relation("FormAnswerOption")
+  
+  @@map("question_options")
+}
+
+model QuestionRow {
+  id         BigInt       @id @default(autoincrement())
+  questionId BigInt
+  rowLabel   String
+  orderNo    Int?
+  createdAt  DateTime     @default(now())
+
+  question    FormQuestion  @relation(fields: [questionId], references: [id])
+  gridAnswers GridAnswer[]
+  answers     FormAnswer[]  @relation("FormAnswerRow")
+  @@map("question_rows")
+}
+
+model QuestionImage {
+  id         BigInt       @id @default(autoincrement())
+  questionId BigInt
+  imageUrl   String
+  createdAt  DateTime     @default(now())
+
+  question   FormQuestion  @relation(fields: [questionId], references: [id])
+  @@map("question_images")
+}
+
+model QuestionCondition {
+  id                  BigInt        @id @default(autoincrement())
+  questionId          BigInt
+  dependsOnQuestionId BigInt
+  dependsOnOptionId   BigInt?
+  operator            String
+  expectedValue       String?
+  createdAt           DateTime      @default(now())
+
+  question            FormQuestion  @relation("childQuestion", fields: [questionId], references: [id])
+  dependsOnQuestion   FormQuestion  @relation("parentQuestion", fields: [dependsOnQuestionId], references: [id])
+  dependsOnOption     QuestionOption? @relation("dependsOnOption", fields: [dependsOnOptionId], references: [id])
+  @@map("question_conditions")
+}
+
+model FormSubmission {
+  id        BigInt       @id @default(autoincrement())
+  formId    BigInt
+  userId    BigInt       // external user ID
+  submittedAt DateTime   @default(now())
+
+  form        Form       @relation(fields: [formId], references: [id])
+  answers     FormAnswer[]
+  gridAnswers GridAnswer[]
+  @@map("form_submissions")
+}
+
+model FormAnswer {
+  id           BigInt       @id @default(autoincrement())
+  submissionId BigInt
+  questionId   BigInt
+  answerText   String?
+  optionId     BigInt?
+  rowId        BigInt?
+  createdAt    DateTime     @default(now())
+
+  submission   FormSubmission @relation(fields: [submissionId], references: [id])
+  question     FormQuestion   @relation(fields: [questionId], references: [id])
+  option       QuestionOption? @relation(fields: [optionId], references: [id], name: "FormAnswerOption")
+  row          QuestionRow?   @relation(fields: [rowId], references: [id], name: "FormAnswerRow")
+  optionValues AnswerOptionValue[]
+  files        AnswerFile[]
+  gridAnswers  GridAnswer[]
+  @@map("form_answers")
+}
+
+model AnswerOptionValue {
+  id        BigInt       @id @default(autoincrement())
+  answerId  BigInt
+  optionId  BigInt
+  createdAt DateTime     @default(now())
+
+  answer   FormAnswer       @relation(fields: [answerId], references: [id])
+  option   QuestionOption   @relation(fields: [optionId], references: [id])
+  @@map("answer_option_values")
+}
+
+model AnswerFile {
+  id        BigInt       @id @default(autoincrement())
+  answerId  BigInt
+  fileUrl   String
+  createdAt DateTime     @default(now())
+
+  answer    FormAnswer   @relation(fields: [answerId], references: [id])
+  @@map("answer_files")
+}
+
+model GridAnswer {
+  id           BigInt       @id @default(autoincrement())
+  submissionId BigInt
+  questionId   BigInt
+  rowId        BigInt
+  optionId     BigInt
+  createdAt    DateTime     @default(now())
+
+  submission   FormSubmission @relation(fields: [submissionId], references: [id])
+  question     FormQuestion   @relation(fields: [questionId], references: [id])
+  row          QuestionRow    @relation(fields: [rowId], references: [id])
+  option       QuestionOption @relation(fields: [optionId], references: [id])
+  answers      FormAnswer[]
+  @@map("grid_answers")
+}
+
