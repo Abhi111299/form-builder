@@ -13,8 +13,8 @@ export class CreateQuestionDto {
   @IsNumber()
   id?: number;
 
-  @IsString()
-  formId: string;
+  @IsNumber()
+  formId: number;
 
   // 🔥 NEW (instead of sectionId)
   @IsOptional()
@@ -36,6 +36,14 @@ export class CreateQuestionDto {
 
   @IsOptional()
   settings?: any;
+
+  @IsOptional()
+  @IsString()
+  sectionTitle?: string; 
+  
+  @IsOptional()
+  @IsString()
+  sectionDescription?: string;
 
   @IsOptional()
   @IsArray()

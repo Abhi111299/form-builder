@@ -6,6 +6,8 @@ import {
   UseGuards,
   ForbiddenException,
 } from '@nestjs/common';
+import { SaveFormUiDto } from './dto/save-form-ui.dto';
+import { mapUiPayloadToQuestions } from './utils/form-ui.adapter';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
@@ -27,12 +29,27 @@ export class QuestionsController {
     return this.questionsService.createQuestion(dto, req.user);
   }
 
-    @Post('bulk')
-    @Roles('admin')
-    async bulkCreate(
+  @Post('bulk')
+  @Roles('admin')
+  async bulkCreate(
     @Body() dto: CreateBulkQuestionDto,
     @Req() req,
-    ) {
+  ) {
     return this.questionsService.bulkCreateQuestions(dto.questions, req.user);
-    }
+  }
+
+  // ✅ NEW API FOR FRONTEND
+  @Post('bulk-from-ui')
+  @Roles('admin')
+  async bulkCreateFromUi(
+    @Body() payload: SaveFormUiDto,
+    @Req() req,
+  ) {
+    const questions = mapUiPayloadToQuestions(payload);
+
+    return this.questionsService.bulkCreateQuestions(
+      questions,
+      req.user,
+    );
+  }
 }

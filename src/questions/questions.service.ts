@@ -248,7 +248,7 @@ async bulkCreateQuestions(questions: CreateQuestionDto[], user: any) {
 
   const formId = BigInt(questions[0].formId);
 
-  // 🔐 Check form ownership
+  // 🔐 Ownership check
   const form = await this.prisma.form.findUnique({
     where: { id: formId },
     select: { adminId: true },
@@ -262,34 +262,34 @@ async bulkCreateQuestions(questions: CreateQuestionDto[], user: any) {
   validateDuplicateQuestionsInPayload(questions);
   validateDuplicateSequencesInPayload(questions);
 
-  // 🔢 Sort only by sequence INSIDE payload
+  // 🔢 Sort payload ONLY by sequence
   const sortedQuestions = [...questions].sort(
     (a, b) => a.sequence - b.sequence,
   );
 
-  // 🔥 GET NEXT GLOBAL ORDER (VERY IMPORTANT)
+  // 🔥 GLOBAL QUESTION ORDER (cross-section)
   const maxOrder = await this.prisma.formQuestion.aggregate({
     where: { formId },
     _max: { orderNo: true },
   });
 
-  let nextOrderNo = (maxOrder._max.orderNo ?? 0) + 1;
+  let nextOrderNo: number = (maxOrder._max.orderNo ?? 0) + 1;
 
   // 🔄 TRANSACTION
   await this.prisma.$transaction(async (tx) => {
     for (const dto of sortedQuestions) {
-
-      // 🔥 DEFAULT SECTION ORDER = 1
       const sectionOrder = dto.sectionOrder ?? 1;
 
-      // 🔥 AUTO CREATE / FETCH SECTION
+      // 🔥 GET / CREATE SECTION
       const section = await getOrCreateSection(
         tx,
         formId,
         sectionOrder,
+        dto.sectionTitle,
+        dto.sectionDescription,
       );
 
-      // ✅ DUPLICATE CHECK (AFTER section resolved)
+      // 🚫 DB duplicate check
       await ensureNoDuplicateInDB(tx, dto, section.id);
 
       // 🔄 UPDATE QUESTION (NO orderNo CHANGE)
@@ -310,7 +310,7 @@ async bulkCreateQuestions(questions: CreateQuestionDto[], user: any) {
         continue;
       }
 
-      // 🔁 SHIFT SEQUENCE ONLY WITHIN SAME SECTION
+      // 🔁 SHIFT sequence ONLY inside same section
       await tx.formQuestion.updateMany({
         where: {
           formId,
@@ -320,7 +320,7 @@ async bulkCreateQuestions(questions: CreateQuestionDto[], user: any) {
         data: { sequence: { increment: 1 } },
       });
 
-      // ➕ CREATE QUESTION (GLOBAL ORDER APPLIED)
+      // ➕ CREATE QUESTION (GLOBAL orderNo)
       const question = await tx.formQuestion.create({
         data: {
           formId,
@@ -329,12 +329,12 @@ async bulkCreateQuestions(questions: CreateQuestionDto[], user: any) {
           type: dto.type,
           required: dto.required ?? false,
           sequence: BigInt(dto.sequence),
-          orderNo: nextOrderNo, // 🔥 KEY LINE
+          orderNo: nextOrderNo,
           settings: dto.settings ?? {},
         },
       });
 
-      nextOrderNo++; // 🔥 INCREMENT GLOBAL ORDER
+      nextOrderNo++; // 🔥 increment global order
 
       // ➕ OPTIONS
       if (dto.options?.length) {
@@ -361,7 +361,7 @@ async bulkCreateQuestions(questions: CreateQuestionDto[], user: any) {
     }
   });
 
-  // ✅ STANDARD RESPONSE
+  // ✅ RESPONSE
   return successResponse(
     'Questions created successfully',
     {
@@ -369,6 +369,7 @@ async bulkCreateQuestions(questions: CreateQuestionDto[], user: any) {
     },
   );
 }
+
 
 
 }
