@@ -31,6 +31,7 @@ export class CreateQuestionDto {
   @IsBoolean()
   required?: boolean;
 
+  @IsOptional()
   @IsNumber()
   sequence: number;
 

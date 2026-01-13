@@ -263,9 +263,7 @@ async bulkCreateQuestions(questions: CreateQuestionDto[], user: any) {
   validateDuplicateSequencesInPayload(questions);
 
   // 🔢 Sort payload ONLY by sequence
-  const sortedQuestions = [...questions].sort(
-    (a, b) => a.sequence - b.sequence,
-  );
+  const sortedQuestions = questions;
 
   // 🔥 GLOBAL QUESTION ORDER (cross-section)
   const maxOrder = await this.prisma.formQuestion.aggregate({
@@ -294,6 +292,17 @@ async bulkCreateQuestions(questions: CreateQuestionDto[], user: any) {
 
       // 🔄 UPDATE QUESTION (NO orderNo CHANGE)
       if (dto.id) {
+        const existing = await tx.formQuestion.findUnique({
+    where: { id: BigInt(dto.id) },
+    select: {
+      sequence: true,
+      sectionId: true,
+    },
+  });
+
+  if (!existing) {
+    throw new BadRequestException('Question not found');
+  }
         await tx.formQuestion.update({
           where: { id: BigInt(dto.id) },
           data: {

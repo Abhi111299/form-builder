@@ -1,5 +1,5 @@
-import { SaveFormUiDto } from '../dto/save-form-ui.dto';
 import { CreateQuestionDto } from '../dto/create-question.dto';
+import { SaveFormUiDto } from '../dto/save-form-ui.dto';
 import { mapFieldToQuestion } from './map-field-to-question';
 
 export function mapUiPayloadToQuestions(
@@ -8,17 +8,25 @@ export function mapUiPayloadToQuestions(
   const questions: CreateQuestionDto[] = [];
 
   let sectionOrder = 1;
-  let sequence = 1;
+
+  // 🔢 sequence per section
+  const sectionSequenceMap = new Map<number, number>();
+
+  const nextSequence = (section: number) => {
+    const current = sectionSequenceMap.get(section) ?? 1;
+    sectionSequenceMap.set(section, current + 1);
+    return current;
+  };
 
   for (const item of payload.items) {
-    // 🔹 TOP-LEVEL FIELD → OPEN SECTION
+    // 🔹 OPEN SECTION FIELD
     if (item.type === 'field') {
       questions.push(
         mapFieldToQuestion(
           payload.id,
           item.data,
           1,
-          sequence++,
+          nextSequence(1),
         ),
       );
     }
@@ -27,15 +35,15 @@ export function mapUiPayloadToQuestions(
     if (item.type === 'section') {
       sectionOrder++;
 
-      let localSequence = 1;
-
       for (const field of item.data.fields) {
         questions.push(
           mapFieldToQuestion(
             payload.id,
             field,
             sectionOrder,
-            localSequence++,
+            nextSequence(sectionOrder),
+            item.data.title,
+            item.data.description,
           ),
         );
       }

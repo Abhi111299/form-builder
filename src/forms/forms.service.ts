@@ -27,32 +27,32 @@ export class FormsService {
 //   };
 // }
   async create(dto: CreateFormDto, user: any) {
-  const form = await this.prisma.form.create({
-    data: {
-      title: dto.title,
-      description: dto.description,
-      tenantId: user.tenantId,
-      adminId: user.userId,
-    },
-  });
+    const form = await this.prisma.form.create({
+      data: {
+        title: dto.title,
+        description: dto.description,
+        tenantId: user.tenantId,
+        adminId: user.userId,
+      },
+    });
 
-  const formattedForm = {
-    id: form.id.toString(),
-    title: form.title,
-    description: form.description,
-    tenantId: form.tenantId,
-    adminId: form.adminId,
-    createdAt: form.createdAt,
-    updatedAt: form.updatedAt,
-  };
+    const formattedForm = {
+      id: form.id.toString(),
+      title: form.title,
+      description: form.description,
+      tenantId: form.tenantId,
+      adminId: form.adminId,
+      createdAt: form.createdAt,
+      updatedAt: form.updatedAt,
+    };
 
-  return successResponse(
-    'Form created successfully',
-    formattedForm, // 👈 single item is OK
-    // null,
-    // 201,
-  );
-}
+    return successResponse(
+      'Form created successfully',
+      formattedForm, // 👈 single item is OK
+      // null,
+      // 201,
+    );
+  }
 
   async getAllFormsByAdmin(
   adminId: string,
