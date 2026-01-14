@@ -3,19 +3,20 @@
   }
 
   datasource db {
-    provider = "postgresql"
+    provider = "mysql"
+    url      = env("DATABASE_URL")
   }
 
 
 model Form {
-  id          BigInt       @id @default(autoincrement())
+  id          Int       @id @default(autoincrement())
   adminId     String       // external user ID
   tenantId    String?
   title       String
   description String?
   status      String       @default("active")
-  startDate   DateTime?    @db.Date
-  endDate     DateTime?    @db.Date
+  startDate   DateTime?    
+  endDate     DateTime?    
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
 
@@ -27,8 +28,8 @@ model Form {
 }
 
 model FormSection {
-  id          BigInt       @id @default(autoincrement())
-  formId      BigInt
+  id          Int       @id @default(autoincrement())
+  formId      Int
   title       String?
   description String?
   orderNo     Int?
@@ -41,11 +42,11 @@ model FormSection {
 }
 
 model FormQuestion {
-  id          BigInt       @id @default(autoincrement())
-  formId      BigInt
-  sectionId   BigInt
+  id          Int       @id @default(autoincrement())
+  formId      Int
+  sectionId   Int
   questionText String
-  sequence    BigInt
+  sequence    Int
   type        String
   required    Boolean      @default(false)
   orderNo     Int?
@@ -68,8 +69,8 @@ model FormQuestion {
 }
 
 model QuestionOption {
-  id          BigInt       @id @default(autoincrement())
-  questionId  BigInt
+  id          Int       @id @default(autoincrement())
+  questionId  Int
   optionLabel String
   optionValue String?
   orderNo     Int?
@@ -85,8 +86,8 @@ model QuestionOption {
 }
 
 model QuestionRow {
-  id         BigInt       @id @default(autoincrement())
-  questionId BigInt
+  id         Int       @id @default(autoincrement())
+  questionId Int
   rowLabel   String
   orderNo    Int?
   createdAt  DateTime     @default(now())
@@ -98,8 +99,8 @@ model QuestionRow {
 }
 
 model QuestionImage {
-  id         BigInt       @id @default(autoincrement())
-  questionId BigInt
+  id         Int       @id @default(autoincrement())
+  questionId Int
   imageUrl   String
   createdAt  DateTime     @default(now())
 
@@ -108,10 +109,10 @@ model QuestionImage {
 }
 
 model QuestionCondition {
-  id                  BigInt        @id @default(autoincrement())
-  questionId          BigInt
-  dependsOnQuestionId BigInt
-  dependsOnOptionId   BigInt?
+  id                  Int        @id @default(autoincrement())
+  questionId          Int
+  dependsOnQuestionId Int
+  dependsOnOptionId   Int?
   operator            String
   expectedValue       String?
   createdAt           DateTime      @default(now())
@@ -123,9 +124,9 @@ model QuestionCondition {
 }
 
 model FormSubmission {
-  id        BigInt       @id @default(autoincrement())
-  formId    BigInt
-  userId    BigInt       // external user ID
+  id        Int       @id @default(autoincrement())
+  formId    Int
+  userId    Int       // external user ID
   submittedAt DateTime   @default(now())
 
   form        Form       @relation(fields: [formId], references: [id])
@@ -135,12 +136,12 @@ model FormSubmission {
 }
 
 model FormAnswer {
-  id           BigInt       @id @default(autoincrement())
-  submissionId BigInt
-  questionId   BigInt
+  id           Int       @id @default(autoincrement())
+  submissionId Int
+  questionId   Int
   answerText   String?
-  optionId     BigInt?
-  rowId        BigInt?
+  optionId     Int?
+  rowId        Int?
   createdAt    DateTime     @default(now())
 
   submission   FormSubmission @relation(fields: [submissionId], references: [id])
@@ -154,9 +155,9 @@ model FormAnswer {
 }
 
 model AnswerOptionValue {
-  id        BigInt       @id @default(autoincrement())
-  answerId  BigInt
-  optionId  BigInt
+  id        Int       @id @default(autoincrement())
+  answerId  Int
+  optionId  Int
   createdAt DateTime     @default(now())
 
   answer   FormAnswer       @relation(fields: [answerId], references: [id])
@@ -165,8 +166,8 @@ model AnswerOptionValue {
 }
 
 model AnswerFile {
-  id        BigInt       @id @default(autoincrement())
-  answerId  BigInt
+  id        Int       @id @default(autoincrement())
+  answerId  Int
   fileUrl   String
   createdAt DateTime     @default(now())
 
@@ -175,11 +176,11 @@ model AnswerFile {
 }
 
 model GridAnswer {
-  id           BigInt       @id @default(autoincrement())
-  submissionId BigInt
-  questionId   BigInt
-  rowId        BigInt
-  optionId     BigInt
+  id           Int       @id @default(autoincrement())
+  submissionId Int
+  questionId   Int
+  rowId        Int
+  optionId     Int
   createdAt    DateTime     @default(now())
 
   submission   FormSubmission @relation(fields: [submissionId], references: [id])

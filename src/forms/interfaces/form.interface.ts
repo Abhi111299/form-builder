@@ -1,8 +1,8 @@
 export interface FormEntity {
-  id: bigint;
+  id: number;
   title: string;
   description?: string;
-  adminId: bigint;
+  adminId: number;
   createdAt: Date;
   updatedAt: Date;
 }

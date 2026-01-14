@@ -5,18 +5,17 @@ import { CreateQuestionDto } from '../dto/create-question.dto';
 export async function ensureNoDuplicateInDB(
   tx,
   dto: CreateQuestionDto,
-  sectionId: bigint,
+  sectionId: Number,
 ) {
   const duplicate = await tx.formQuestion.findFirst({
     where: {
-      formId: BigInt(dto.formId),
+      formId: Number(dto.formId),
       sectionId,
       type: dto.type,
       questionText: {
         equals: normalizeQuestion(dto.questionText),
-        mode: 'insensitive',
       },
-      ...(dto.id ? { NOT: { id: BigInt(dto.id) } } : {}),
+      ...(dto.id ? { NOT: { id: Number(dto.id) } } : {}),
     },
   });
 
@@ -31,13 +30,13 @@ export async function replaceOptionsAndRows(tx, dto: CreateQuestionDto) {
   if (!dto.id) return;
 
   await tx.questionOption.deleteMany({
-    where: { questionId: BigInt(dto.id) },
+    where: { questionId: Number(dto.id) },
   });
 
   if (dto.options?.length) {
     await tx.questionOption.createMany({
       data: dto.options.map((opt, index) => ({
-        questionId: BigInt(dto.id!),
+        questionId: Number(dto.id!),
         optionLabel: opt.label,
         optionValue: opt.value,
         orderNo: opt.orderNo ?? index,
@@ -46,13 +45,13 @@ export async function replaceOptionsAndRows(tx, dto: CreateQuestionDto) {
   }
 
   await tx.questionRow.deleteMany({
-    where: { questionId: BigInt(dto.id) },
+    where: { questionId: Number(dto.id) },
   });
 
   if (dto.rows?.length) {
     await tx.questionRow.createMany({
       data: dto.rows.map((row, index) => ({
-        questionId: BigInt(dto.id!),
+        questionId: Number(dto.id!),
         rowLabel: row.label,
         orderNo: row.orderNo ?? index,
       })),
