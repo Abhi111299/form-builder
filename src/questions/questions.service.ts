@@ -21,7 +21,7 @@ export class QuestionsService {
 
   async createQuestion(dto: CreateQuestionDto, user: any) {
   // 1️⃣ Verify form ownership
-  const formId = BigInt(dto.formId);
+  const formId = Number(dto.formId);
 
   const form = await this.prisma.form.findUnique({
     where: { id: formId },
@@ -49,7 +49,7 @@ export class QuestionsService {
       questionText: dto.questionText,
       type: dto.type,
       required: dto.required ?? false,
-      sequence: BigInt(dto.sequence),
+      sequence: Number(dto.sequence),
       settings: dto.settings ?? {},
     },
   });
@@ -87,7 +87,7 @@ export class QuestionsService {
 //   try {
 //     // 1️⃣ Verify form ownership
 //     const form = await this.prisma.form.findUnique({
-//       where: { id: BigInt(dto.formId) },
+//       where: { id: Number(dto.formId) },
 //       select: { adminId: true },
 //     });
 
@@ -98,12 +98,12 @@ export class QuestionsService {
 //     // 2️⃣ Create question
 //     const question = await this.prisma.formQuestion.create({
 //       data: {
-//         formId: BigInt(dto.formId),
+//         formId: Number(dto.formId),
 //         sectionId: section.id,
 //         questionText: dto.questionText,
 //         type: dto.type,
 //         required: dto.required ?? false,
-//         sequence: BigInt(dto.sequence), // ✔ safe now
+//         sequence: Number(dto.sequence), // ✔ safe now
 //         settings: dto.settings ?? {},
 //       },
 //     });
@@ -152,7 +152,7 @@ export class QuestionsService {
 //       return { message: 'No questions provided' };
 //     }
 
-//     const formId = BigInt(questions[0].formId);
+//     const formId = Number(questions[0].formId);
 
 //     const form = await this.prisma.form.findUnique({
 //       where: { id: formId },
@@ -177,12 +177,12 @@ export class QuestionsService {
 
 //         if (dto.id) {
 //           await tx.formQuestion.update({
-//             where: { id: BigInt(dto.id) },
+//             where: { id: Number(dto.id) },
 //             data: {
 //               questionText: dto.questionText,
 //               type: dto.type,
 //               required: dto.required ?? false,
-//               sequence: BigInt(dto.sequence),
+//               sequence: Number(dto.sequence),
 //               settings: dto.settings ?? {},
 //             },
 //           });
@@ -193,21 +193,21 @@ export class QuestionsService {
 
 //         await tx.formQuestion.updateMany({
 //           where: {
-//             formId: BigInt(dto.formId),
-//             sectionId: BigInt(dto.sectionId),
-//             sequence: { gte: BigInt(dto.sequence) },
+//             formId: Number(dto.formId),
+//             sectionId: Number(dto.sectionId),
+//             sequence: { gte: Number(dto.sequence) },
 //           },
 //           data: { sequence: { increment: 1 } },
 //         });
 
 //         const question = await tx.formQuestion.create({
 //           data: {
-//             formId: BigInt(dto.formId),
-//             sectionId: BigInt(dto.sectionId),
+//             formId: Number(dto.formId),
+//             sectionId: Number(dto.sectionId),
 //             questionText: dto.questionText,
 //             type: dto.type,
 //             required: dto.required ?? false,
-//             sequence: BigInt(dto.sequence),
+//             sequence: Number(dto.sequence),
 //             settings: dto.settings ?? {},
 //           },
 //         });
@@ -246,7 +246,7 @@ async bulkCreateQuestions(questions: CreateQuestionDto[], user: any) {
     return successResponse('No questions provided', { totalCreated: 0 });
   }
 
-  const formId = BigInt(questions[0].formId);
+  const formId = Number(questions[0].formId);
 
   // 🔐 Ownership check
   const form = await this.prisma.form.findUnique({
@@ -274,109 +274,114 @@ async bulkCreateQuestions(questions: CreateQuestionDto[], user: any) {
   let nextOrderNo: number = (maxOrder._max.orderNo ?? 0) + 1;
 
   // 🔄 TRANSACTION
-  await this.prisma.$transaction(async (tx) => {
-    for (const dto of sortedQuestions) {
-      const sectionOrder = dto.sectionOrder ?? 1;
+  try {
+    await this.prisma.$transaction(async (tx) => {
+      for (const dto of sortedQuestions) {
+        const sectionOrder = dto.sectionOrder ?? 1;
 
-      // 🔥 GET / CREATE SECTION
-      const section = await getOrCreateSection(
-        tx,
-        formId,
-        sectionOrder,
-        dto.sectionTitle,
-        dto.sectionDescription,
-      );
+        // 🔥 GET / CREATE SECTION
+        const section = await getOrCreateSection(
+          tx,
+          formId,
+          sectionOrder,
+          dto.sectionTitle,
+          dto.sectionDescription,
+        );
 
-      // 🚫 DB duplicate check
-      await ensureNoDuplicateInDB(tx, dto, section.id);
+        // 🚫 DB duplicate check
+        await ensureNoDuplicateInDB(tx, dto, section.id);
 
-      // 🔄 UPDATE QUESTION (NO orderNo CHANGE)
-      if (dto.id) {
-        const existing = await tx.formQuestion.findUnique({
-    where: { id: BigInt(dto.id) },
-    select: {
-      sequence: true,
-      sectionId: true,
-    },
-  });
+        // 🔄 UPDATE QUESTION (NO orderNo CHANGE)
+        if (dto.id) {
+          const existing = await tx.formQuestion.findUnique({
+      where: { id: Number(dto.id) },
+      select: {
+        sequence: true,
+        sectionId: true,
+      },
+    });
 
-  if (!existing) {
-    throw new BadRequestException('Question not found');
-  }
-        await tx.formQuestion.update({
-          where: { id: BigInt(dto.id) },
+    if (!existing) {
+      throw new BadRequestException('Question not found');
+    }
+          await tx.formQuestion.update({
+            where: { id: Number(dto.id) },
+            data: {
+              questionText: dto.questionText,
+              type: dto.type,
+              required: dto.required ?? false,
+              sequence: Number(dto.sequence),
+              sectionId: section.id,
+              settings: dto.settings ?? {},
+            },
+          });
+
+          await replaceOptionsAndRows(tx, dto);
+          continue;
+        }
+
+        // 🔁 SHIFT sequence ONLY inside same section
+        await tx.formQuestion.updateMany({
+          where: {
+            formId,
+            sectionId: section.id,
+            sequence: { gte: Number(dto.sequence) },
+          },
+          data: { sequence: { increment: 1 } },
+        });
+
+        // ➕ CREATE QUESTION (GLOBAL orderNo)
+        const question = await tx.formQuestion.create({
           data: {
+            formId,
+            sectionId: section.id,
             questionText: dto.questionText,
             type: dto.type,
             required: dto.required ?? false,
-            sequence: BigInt(dto.sequence),
-            sectionId: section.id,
+            sequence: Number(dto.sequence),
+            orderNo: nextOrderNo,
             settings: dto.settings ?? {},
           },
         });
 
-        await replaceOptionsAndRows(tx, dto);
-        continue;
+        nextOrderNo++; // 🔥 increment global order
+
+        // ➕ OPTIONS
+        if (dto.options?.length) {
+          await tx.questionOption.createMany({
+            data: dto.options.map((opt, index) => ({
+              questionId: question.id,
+              optionLabel: opt.label,
+              optionValue: opt.value ?? null,
+              orderNo: opt.orderNo ?? index,
+            })),
+          });
+        }
+
+        // ➕ ROWS
+        if (dto.rows?.length) {
+          await tx.questionRow.createMany({
+            data: dto.rows.map((row, index) => ({
+              questionId: question.id,
+              rowLabel: row.label,
+              orderNo: row.orderNo ?? index,
+            })),
+          });
+        }
       }
+    });
 
-      // 🔁 SHIFT sequence ONLY inside same section
-      await tx.formQuestion.updateMany({
-        where: {
-          formId,
-          sectionId: section.id,
-          sequence: { gte: BigInt(dto.sequence) },
-        },
-        data: { sequence: { increment: 1 } },
-      });
-
-      // ➕ CREATE QUESTION (GLOBAL orderNo)
-      const question = await tx.formQuestion.create({
-        data: {
-          formId,
-          sectionId: section.id,
-          questionText: dto.questionText,
-          type: dto.type,
-          required: dto.required ?? false,
-          sequence: BigInt(dto.sequence),
-          orderNo: nextOrderNo,
-          settings: dto.settings ?? {},
-        },
-      });
-
-      nextOrderNo++; // 🔥 increment global order
-
-      // ➕ OPTIONS
-      if (dto.options?.length) {
-        await tx.questionOption.createMany({
-          data: dto.options.map((opt, index) => ({
-            questionId: question.id,
-            optionLabel: opt.label,
-            optionValue: opt.value ?? null,
-            orderNo: opt.orderNo ?? index,
-          })),
-        });
-      }
-
-      // ➕ ROWS
-      if (dto.rows?.length) {
-        await tx.questionRow.createMany({
-          data: dto.rows.map((row, index) => ({
-            questionId: question.id,
-            rowLabel: row.label,
-            orderNo: row.orderNo ?? index,
-          })),
-        });
-      }
-    }
-  });
-
-  // ✅ RESPONSE
-  return successResponse(
-    'Questions created successfully',
-    {
-      totalCreated: questions.length,
-    },
-  );
+    // ✅ RESPONSE
+    return successResponse(
+      'Questions created successfully',
+      {
+        totalCreated: questions.length,
+      },
+    );
+    } catch (error) {
+  console.error('🔥 BULK CREATE ERROR:', error);
+  throw error;
+}
 }
 
 

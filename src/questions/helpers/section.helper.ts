@@ -2,7 +2,7 @@
 
 export async function getOrCreateSection(
   tx: any,
-  formId: bigint,
+  formId: number,
   orderNo: number,
   title?: string,
   description?: string,

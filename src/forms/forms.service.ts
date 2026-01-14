@@ -97,7 +97,7 @@ export class FormsService {
   async getCompleteForm(formId: number, user: any) {
     const form = await this.prisma.form.findFirst({
       where: {
-        id: BigInt(formId),
+        id: Number(formId),
         adminId: user.userId,
       },
       include: {
